@@ -1,0 +1,35 @@
+/*const API_URL = "http://localhost:3000"; // cambia a tu backend
+
+export async function apiFetch(endpoint, options = {}) {
+  const token = localStorage.getItem("token");
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json().catch(() => null);
+}
+*/
+
+// src/utils/api.js
+//const API_URL = "http://api.eduarduino.cl"; // backend en tu máquina
+
+//const API_URL = "http://localhost:3000"; // Para desarrollo local
+const API_URL = "https://backend-lock-iot.onrender.com"; // Backend en Render
+// const API_URL = "https://backend-lock-iot-production.up.railway.app"; // Backend en Railway
+
+export async function apiFetch(endpoint, options = {}) {
+  const token = localStorage.getItem("token");
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
+
+  const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json().catch(() => null);
+}
