@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaUser, FaLock, FaShieldAlt } from "react-icons/fa";
+import { FaUser, FaLock } from "react-icons/fa";
+import logo from "../assets/logo-duoc.svg";
 import { apiFetch } from "../utils/api";
 
 const Login = () => {
@@ -52,8 +53,12 @@ const Login = () => {
       <div className="w-full max-w-md animate-fadeIn">
         {/* Logo */}
         <div className="text-center mb-8 animate-scaleIn">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-institutional-gold-gradient rounded-full mb-4 shadow-institutional animate-glow">
-            <FaShieldAlt className="text-white text-3xl" />
+          {/* Logo limpio, más grande y sin fondo dorado */}
+          <div className="mb-4">
+            {/* Fondo oscuro para que el logo blanco sea visible */}
+            <div className="inline-flex items-center justify-center bg-gray-900/90 p-3 rounded-md shadow-md mx-auto w-fit">
+              <img src={logo} alt="Logo institucional" className="w-28 h-auto block" />
+            </div>
           </div>
           <h1 className="text-4xl font-bold text-gray-800 mb-2">LockIoT</h1>
           <p className="text-gray-600 font-medium">Sistema de Cerraduras Inteligentes</p>
@@ -117,7 +122,7 @@ const Login = () => {
 
           <div className="text-center mt-8 animate-fadeIn" style={{animationDelay: '0.4s'}}>
             <p className="text-sm text-gray-500 font-medium">
-              © 2025 LockIoT - Sistema de Control de Acceso
+              © 2025 LockIoT {/*- Sistema de Control de Acceso */}
             </p>
           </div>
         </div>

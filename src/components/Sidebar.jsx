@@ -1,8 +1,9 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { FaUser, FaDoorOpen, FaKey, FaClipboardList, FaShieldAlt, FaArchive, FaSignOutAlt, FaBars, FaTimes } from "react-icons/fa";
+import { FaUser, FaDoorOpen, FaKey, FaClipboardList, FaArchive, FaSignOutAlt, FaBars, FaTimes } from "react-icons/fa";
 import { HiSparkles, HiLogout } from "react-icons/hi";
 import { MdDashboard } from "react-icons/md";
 import { useSidebar } from "../contexts/SidebarContext";
+import logo from "../assets/logo-duoc.svg";
 
 export default function Sidebar() {
   const navigate = useNavigate();
@@ -91,17 +92,17 @@ export default function Sidebar() {
       {/* Header */}
       <div className="p-6 border-b" style={{borderColor: 'var(--institutional-gold-dark)'}}>
         <div className="flex items-center justify-center mb-4">
-          <div className="bg-institutional-gold-gradient p-3 rounded-xl shadow-institutional animate-glow">
-            <FaShieldAlt className="text-white text-2xl" />
-          </div>
+          <img src={logo} alt="Logo institucional" className="w-20 h-auto object-contain" />
         </div>
         <h1 className="text-2xl font-bold text-center">
           <span style={{color: 'var(--institutional-gold)'}}>Lock</span><span className="text-white">IoT</span>
         </h1>
+      {/*
         <p className="text-center text-xs mt-1 flex items-center justify-center gap-1" style={{color: 'var(--institutional-gray-light)'}}>
           <HiSparkles style={{color: 'var(--institutional-gold)'}} />
           Control Inteligente
         </p>
+        */}
       </div>
 
       {/* Navigation */}
