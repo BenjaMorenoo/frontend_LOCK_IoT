@@ -7,7 +7,9 @@ import Modal from "../components/Modal";
 import { io } from "socket.io-client";
 
 // Conexión al backend con socket.io
-const socket = io("https://backend-lock-iot.onrender.com"); // Cambiar a URL del hosting si es necesario
+//const socket = io("https://backend-lock-iot.onrender.com"); // Cambiar a URL del hosting si es necesario
+const socket = io("https://reprint-vatican-not-addressing.trycloudflare.com"); // conexion a ironhost
+
 
 export default function Profesores() {
   const [profesores, setProfesores] = useState([]);

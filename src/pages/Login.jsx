@@ -31,10 +31,13 @@ const Login = () => {
         body: JSON.stringify(formData),
       });
 
-      if (response.token) {
+      if (response && response.token) {
         localStorage.setItem("token", response.token);
-        localStorage.setItem("user", JSON.stringify(response.user));
+        localStorage.setItem("user", JSON.stringify(response.user || null));
         navigate("/dashboard");
+      } else {
+        // response may be null or contain an error message
+        setError((response && response.error) || 'Credenciales inválidas');
       }
     } catch (err) {
       setError(err.message || "Error al iniciar sesión");
