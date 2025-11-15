@@ -6,6 +6,8 @@ import { MdAccessTime, MdSecurity } from "react-icons/md";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+
+
 export default function Logs() {
     const [logs, setLogs] = useState([]);
 
