@@ -5,6 +5,8 @@ import { HiSparkles, HiClipboardList } from "react-icons/hi";
 import { MdAccessTime, MdSecurity } from "react-icons/md";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logo from "../assets/logo-duoc.svg";
+import logoRaw from "../assets/logo-duoc.svg?raw";
 
 
 
@@ -16,20 +18,80 @@ export default function Logs() {
     }, []);
 
     const generatePDF = () => {
-        const doc = new jsPDF();
-        
-        // Configurar colores institucionales
-        const goldColor = [218, 165, 32]; // Dorado institucional
-        const darkGoldColor = [184, 134, 11]; // Dorado oscuro
-        
-        // Encabezado del documento
-        doc.setFillColor(...goldColor);
-        doc.rect(0, 0, 210, 30, 'F');
-        
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Historial de Aperturas', 105, 20, { align: 'center' });
+        (async () => {
+            const doc = new jsPDF();
+
+            // Configurar colores institucionales
+            const goldColor = [218, 165, 32]; // Dorado institucional
+            const darkGoldColor = [184, 134, 11]; // Dorado oscuro
+
+            // Intentar añadir logo al encabezado (no bloquear si falla)
+            const loadImageDataUrl = (src, mime = 'image/png') => new Promise(async (resolve, reject) => {
+                try {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous';
+
+                    if (typeof src === 'string' && (src.trim().startsWith('<svg') || src.endsWith('.svg'))) {
+                        let svgText;
+                        if (src.trim().startsWith('<svg')) {
+                            svgText = src;
+                        } else {
+                            const resp = await fetch(src);
+                            if (!resp.ok) throw new Error('Fetch failed for svg');
+                            svgText = await resp.text();
+                        }
+                        const darkHex = '#121212';
+                        svgText = svgText
+                            .replace(/fill\s*=\s*(["'])?#(?:fff|ffffff)\1/gi, `fill="${darkHex}"`)
+                            .replace(/fill\s*=\s*(["'])?white\1/gi, `fill="${darkHex}"`)
+                            .replace(/style\s*=\s*(["'])(.*?)\1/gi, (m, q, style) => {
+                                const newStyle = style.replace(/fill\s*:\s*#(?:fff|ffffff)|fill\s*:\s*white/gi, `fill:${darkHex}`);
+                                return `style=${q}${newStyle}${q}`;
+                            });
+                        src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+                    }
+
+                    img.onload = () => {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.naturalWidth || img.width;
+                            canvas.height = img.naturalHeight || img.height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0);
+                            resolve({ dataUrl: canvas.toDataURL(mime), width: canvas.width, height: canvas.height });
+                        } catch (err) {
+                            reject(err);
+                        }
+                    };
+                    img.onerror = (e) => reject(e);
+                    img.src = src;
+                } catch (err) {
+                    reject(err);
+                }
+            });
+
+            try {
+                const imgInfo = await loadImageDataUrl(logoRaw || logo);
+                const imgWidth = 40; // aumentar ancho a 40 mm
+                const imgHeight = imgWidth * (imgInfo.height / imgInfo.width);
+                const x = 20;
+                const y = 6;
+                // Dibujar fondo para que el logo blanco sea visible
+                doc.setFillColor(...darkGoldColor);
+                doc.rect(x - 2, y - 2, imgWidth + 4, imgHeight + 4, 'F');
+                doc.addImage(imgInfo.dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+            } catch (err) {
+                console.warn('No se pudo cargar el logo para el PDF:', err);
+            }
+
+            // Encabezado del documento
+            doc.setFillColor(...goldColor);
+            doc.rect(0, 0, 210, 30, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Historial de Aperturas', 105, 20, { align: 'center' });
         
         // Fecha de generación
         doc.setTextColor(0, 0, 0);
@@ -56,8 +118,25 @@ export default function Logs() {
                 new Date(log.fecha_hora).toLocaleTimeString('es-ES')
             ]);
             
-            // Crear tabla
-            const tableResult = autoTable(doc, {
+            // Crear tabla usando helper tolerante a la forma en que el plugin fue registrado
+            const callAutoTable = (doc, opts) => {
+                try {
+                    if (doc && typeof doc.autoTable === 'function') {
+                        return doc.autoTable(opts);
+                    }
+                    if (typeof autoTable === 'function') {
+                        return autoTable(doc, opts);
+                    }
+                    if (typeof window !== 'undefined' && typeof window.jspdfAutoTable === 'function') {
+                        return window.jspdfAutoTable(doc, opts);
+                    }
+                    console.error('jspdf-autotable: plugin not found (tried doc.autoTable, default import, window.jspdfAutoTable)');
+                } catch (err) {
+                    console.error('Error calling autoTable:', err);
+                }
+            };
+
+            callAutoTable(doc, {
                 head: [['Profesor', 'Casillero', 'Fecha', 'Hora']],
                 body: tableData,
                 startY: 55,
@@ -101,8 +180,9 @@ export default function Logs() {
             doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
         }
         
-        // Descargar el PDF
-        doc.save(`historial-aperturas-${new Date().toISOString().split('T')[0]}.pdf`);
+        // Descargar el PDF con formato `Reporte_carros-YYYY-MM-DD.pdf`
+        doc.save(`Reporte_carros-${new Date().toISOString().split('T')[0]}.pdf`);
+            })();
     };
 
     return (

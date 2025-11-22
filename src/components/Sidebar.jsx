@@ -42,6 +42,28 @@ export default function Sidebar() {
     }
   ];
 
+  // Añadir items administrativos según rol (obtenido desde token)
+  const token = localStorage.getItem('token');
+  const parseJwt = (t) => {
+    try {
+      const payload = t.split('.')[1];
+      return JSON.parse(decodeURIComponent(atob(payload).split('').map(function(c){
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join('')));
+    } catch (e) { return null; }
+  };
+  const user = token ? parseJwt(token.split(' ')[1] || token) : null;
+  const role = user?.role || null;
+
+  if (role === 'superadmin') {
+    menuItems.push({ path: '/dashboard/sedes', icon: FaBars, label: 'Sedes', description: 'Gestionar sedes' });
+    menuItems.push({ path: '/dashboard/admins', icon: FaUser, label: 'Administradores', description: 'Crear / administrar CETCOM' });
+  }
+  if (role === 'superadmin' || role === 'cetcom') {
+    menuItems.push({ path: '/dashboard/escuelas', icon: FaClipboardList, label: 'Escuelas', description: 'Gestionar escuelas' });
+    menuItems.push({ path: '/dashboard/jefes', icon: FaUser, label: 'Jefes', description: 'Gestionar jefes de carrera' });
+  }
+
   const isActive = (path) => location.pathname === path;
 
   return (

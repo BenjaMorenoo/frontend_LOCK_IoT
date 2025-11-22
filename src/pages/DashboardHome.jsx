@@ -4,7 +4,9 @@ import { HiSparkles, HiTrendingUp, HiUsers } from "react-icons/hi";
 import { MdAccessTime, MdSecurity } from "react-icons/md";
 import { apiFetch } from "../utils/api";
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
+import logo from "../assets/logo-duoc.svg";
+import logoRaw from "../assets/logo-duoc.svg?raw";
 
 export default function DashboardHome() {
   const [profesores, setProfesores] = useState([]);
@@ -20,7 +22,71 @@ export default function DashboardHome() {
   const recentLogs = logs.slice(0, 15);
 
   const generatePDF = () => {
-    const doc = new jsPDF();
+    (async () => {
+      const doc = new jsPDF();
+
+      // Helper: cargar imagen y convertir a dataURL, devolver también dimensiones
+      const loadImageDataUrl = (src, mime = 'image/png') => new Promise(async (resolve, reject) => {
+        try {
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+
+          // If SVG file, fetch its text and build a data URL so canvas can render it reliably
+          if (typeof src === 'string' && (src.trim().startsWith('<svg') || src.endsWith('.svg'))) {
+            let svgText;
+            if (src.trim().startsWith('<svg')) {
+              svgText = src;
+            } else {
+              const resp = await fetch(src);
+              if (!resp.ok) throw new Error('Fetch failed for svg');
+              svgText = await resp.text();
+            }
+            // Reemplazar fills blancos en el SVG por un color oscuro para asegurar visibilidad
+            const darkHex = '#121212';
+            svgText = svgText
+              .replace(/fill\s*=\s*(["'])?#(?:fff|ffffff)\1/gi, `fill="${darkHex}"`)
+              .replace(/fill\s*=\s*(["'])?white\1/gi, `fill="${darkHex}"`)
+              .replace(/style\s*=\s*(["'])(.*?)\1/gi, (m, q, style) => {
+                const newStyle = style.replace(/fill\s*:\s*#(?:fff|ffffff)|fill\s*:\s*white/gi, `fill:${darkHex}`);
+                return `style=${q}${newStyle}${q}`;
+              });
+            src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+          }
+
+          img.onload = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth || img.width;
+              canvas.height = img.naturalHeight || img.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              resolve({ dataUrl: canvas.toDataURL(mime), width: canvas.width, height: canvas.height });
+            } catch (err) {
+              reject(err);
+            }
+          };
+          img.onerror = (e) => reject(e);
+          img.src = src;
+        } catch (err) {
+          reject(err);
+        }
+      });
+
+      // Intentar añadir logo al encabezado (no bloquear si falla)
+      try {
+        const imgInfo = await loadImageDataUrl(logoRaw || logo);
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const imgWidth = 40; // mm (aumentado para mantener consistencia con Logs)
+        const imgHeight = imgWidth * (imgInfo.height / imgInfo.width);
+        const x = 20;
+        const y = 12;
+        // Dibujar fondo para que el logo blanco sea visible
+        doc.setFillColor(184, 134, 11); // fondo dorado oscuro
+        doc.rect(x - 2, y - 2, imgWidth + 4, imgHeight + 4, 'F');
+        doc.addImage(imgInfo.dataUrl, 'PNG', x, y, imgWidth, imgHeight);
+      } catch (err) {
+        console.warn('No se pudo cargar el logo para el PDF:', err);
+      }
     
     // Encabezado del documento
     doc.setFontSize(20);
@@ -51,8 +117,25 @@ export default function DashboardHome() {
         log.fecha_hora
       ]);
       
-      // Crear tabla
-      doc.autoTable({
+      // Crear tabla usando helper tolerante a la forma en que el plugin fue registrado
+      const callAutoTable = (doc, opts) => {
+        try {
+          if (doc && typeof doc.autoTable === 'function') {
+            return doc.autoTable(opts);
+          }
+          if (typeof autoTable === 'function') {
+            return autoTable(doc, opts);
+          }
+          if (typeof window !== 'undefined' && typeof window.jspdfAutoTable === 'function') {
+            return window.jspdfAutoTable(doc, opts);
+          }
+          console.error('jspdf-autotable: plugin not found (tried doc.autoTable, default import, window.jspdfAutoTable)');
+        } catch (err) {
+          console.error('Error calling autoTable:', err);
+        }
+      };
+
+      callAutoTable(doc, {
         head: [['Profesor', 'Casillero', 'Fecha/Hora']],
         body: tableData,
         startY: 60,
@@ -68,7 +151,7 @@ export default function DashboardHome() {
         alternateRowStyles: {
           fillColor: [252, 248, 227] // Fondo dorado claro
         },
-        margin: { top: 60, left: 20, right: 20 }
+        margin: { top: 60, left: 20, right: 40 }
       });
       
       // Agregar total de registros
@@ -87,8 +170,9 @@ export default function DashboardHome() {
       doc.text(`Página ${i} de ${pageCount}`, doc.internal.pageSize.width - 40, doc.internal.pageSize.height - 10);
     }
     
-    // Descargar el PDF
-    doc.save('actividad-reciente.pdf');
+      // Descargar el PDF con formato `Reporte_carros-YYYY-MM-DD.pdf`
+      doc.save(`Reporte_Carros-${new Date().toISOString().split('T')[0]}.pdf`);
+    })();
   };
 
   const statsCards = [
@@ -97,7 +181,7 @@ export default function DashboardHome() {
       value: profesores.length,
       icon: HiUsers,
       gradient: "from-institutional-gold to-institutional-gold-light",
-    bgGradient: "from-white to-institutional-gold-light/10",
+      bgGradient: "from-white to-institutional-gold-light/10",
       description: "Usuarios registrados"
     },
     {
@@ -105,7 +189,7 @@ export default function DashboardHome() {
       value: casilleros.length,
       icon: FaArchive,
       gradient: "from-institutional-gold-dark to-institutional-gold",
-    bgGradient: "from-institutional-gold-light/5 to-white",
+      bgGradient: "from-institutional-gold-light/5 to-white",
       description: "Unidades disponibles"
     },
     {
@@ -113,7 +197,7 @@ export default function DashboardHome() {
       value: logs.length,
       icon: FaChartLine,
       gradient: "from-institutional-gold to-institutional-gold-dark",
-    bgGradient: "from-white to-institutional-gold-light/15",
+      bgGradient: "from-white to-institutional-gold-light/15",
       description: "Total de accesos"
     }
   ];

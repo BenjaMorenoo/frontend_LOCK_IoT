@@ -11,6 +11,7 @@ export default function Casilleros() {
 
   const [isOpen, setIsOpen] = useState(false);
   const [numero, setNumero] = useState("");
+  const [nombreSala, setNombreSala] = useState("");
 
   useEffect(() => {
     loadCasilleros();
@@ -30,10 +31,11 @@ export default function Casilleros() {
     try {
       await apiFetch("/api/casilleros", {
         method: "POST",
-        body: JSON.stringify({ numero }),
+        body: JSON.stringify({ numero, nombre_sala: nombreSala }),
       });
       setMsg("Casillero agregado correctamente");
       setNumero("");
+      setNombreSala("");
       setIsOpen(false);
       loadCasilleros();
     } catch (err) {
@@ -112,6 +114,7 @@ export default function Casilleros() {
                     <div>
                       <p className="text-xs text-gray-500 font-medium mb-1">CASILLERO</p>
                       <p className="font-bold text-gray-800 text-xl">#{casillero.numero}</p>
+                      <p className="text-sm text-gray-600 mt-1">Sala: {casillero.nombre_sala}</p>
                     </div>
                     <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300" style={{color: 'var(--institutional-gold)'}}>
                       <HiSparkles className="text-lg" />
@@ -138,6 +141,14 @@ export default function Casilleros() {
             placeholder="Número"
             value={numero}
             onChange={(e) => setNumero(e.target.value)}
+            className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl text-black placeholder-gray-500 focus:ring-2 focus:border-institutional-gold focus:bg-white outline-none transition-all duration-300 shadow-institutional"
+            style={{'--tw-ring-color': 'var(--institutional-gold)'}}
+            required
+          />
+          <input
+            placeholder="Nombre de la sala"
+            value={nombreSala}
+            onChange={(e) => setNombreSala(e.target.value)}
             className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl text-black placeholder-gray-500 focus:ring-2 focus:border-institutional-gold focus:bg-white outline-none transition-all duration-300 shadow-institutional"
             style={{'--tw-ring-color': 'var(--institutional-gold)'}}
             required

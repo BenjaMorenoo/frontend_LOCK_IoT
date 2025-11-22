@@ -8,7 +8,8 @@ import { io } from "socket.io-client";
 
 // Conexión al backend con socket.io
 //const socket = io("https://backend-lock-iot.onrender.com"); // Cambiar a URL del hosting si es necesario
-const socket = io("https://reprint-vatican-not-addressing.trycloudflare.com"); // conexion a ironhost
+const socket = io("https://api-lockiot.ironhost.cl"); // conexion a ironhost
+//const socket = io("https://walks-flexibility-handle-local.trycloudflare.com"); // conexion a ironhost local
 
 
 export default function Profesores() {
@@ -17,7 +18,11 @@ export default function Profesores() {
 
   // Modal states
   const [isOpen, setIsOpen] = useState(false);
-  const [nombre, setNombre] = useState("");
+  const [primerNombre, setPrimerNombre] = useState("");
+  const [segundoNombre, setSegundoNombre] = useState("");
+  const [primerApellido, setPrimerApellido] = useState("");
+  const [segundoApellido, setSegundoApellido] = useState("");
+  const [rut, setRut] = useState("");
   const [tarjeta, setTarjeta] = useState("");
   const [lastUID, setLastUID] = useState(""); // Buffer temporal de UID
   
@@ -28,6 +33,19 @@ export default function Profesores() {
   useEffect(() => {
     loadProfesores();
 
+    // Registrar listener en el server para recibir solo UIDs de nuestra sede (si aplica)
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload && payload.sede_id) {
+          socket.emit('register_listener', { sede_id: payload.sede_id });
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo registrar listener por token inválido', e);
+    }
+
     // Escuchar evento de nueva tarjeta desde el backend
     socket.on("nueva-tarjeta", async (uid) => {
       setLastUID(uid); // Guardar siempre la UID
@@ -36,7 +54,8 @@ export default function Profesores() {
       const profesorExistente = profesoresData.find((p) => p.tarjeta_uid === uid);
 
       if (profesorExistente) {
-        setMsg(`⚠️ Esta tarjeta ya está asignada a: ${profesorExistente.nombre}`);
+        const full = profesorExistente.nombre || `${profesorExistente.primer_nombre || ''} ${profesorExistente.primer_apellido || ''}`.trim();
+        setMsg(`⚠️ Esta tarjeta ya está asignada a: ${full}`);
       } else {
         setMsg(`Tarjeta lista para asignar`);
         if (isOpen) setTarjeta(uid); // Solo autocompleta si el modal está abierto
@@ -45,6 +64,18 @@ export default function Profesores() {
 
     return () => {
       socket.off("nueva-tarjeta");
+      // intentar unregister del room de sede si estaba registrado
+      try {
+        const token = localStorage.getItem('token');
+        if (token) {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          if (payload && payload.sede_id) {
+            socket.emit('unregister_listener', { sede_id: payload.sede_id });
+          }
+        }
+      } catch (e) {
+        // noop
+      }
     };
   }, [isOpen]);
 
@@ -72,10 +103,17 @@ export default function Profesores() {
     try {
       await apiFetch("/api/profesores", {
         method: "POST",
-        body: JSON.stringify({ nombre, tarjeta_uid: tarjeta }),
+        body: JSON.stringify({
+          primer_nombre: primerNombre,
+          segundo_nombre: segundoNombre,
+          primer_apellido: primerApellido,
+          segundo_apellido: segundoApellido,
+          rut: rut,
+          tarjeta_uid: tarjeta
+        }),
       });
       setMsg("Profesor agregado correctamente");
-      setNombre("");
+      setPrimerNombre(""); setSegundoNombre(""); setPrimerApellido(""); setSegundoApellido(""); setRut("");
       setTarjeta("");
       setIsOpen(false);
       loadProfesores();
@@ -178,13 +216,13 @@ export default function Profesores() {
                     <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                       <div>
                         <p className="text-xs text-gray-500 font-medium mb-1">NOMBRE COMPLETO</p>
-                        <p className="font-bold text-gray-800 text-lg">{profesor.nombre}</p>
+                        <p className="font-bold text-gray-800 text-lg">{profesor.nombre || `${profesor.primer_nombre || ''} ${profesor.segundo_nombre || ''} ${profesor.primer_apellido || ''} ${profesor.segundo_apellido || ''}`.replace(/\s+/g,' ').trim()}</p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-500 font-medium mb-1">UID TARJETA</p>
                         <div className="flex items-center gap-2">
                           <MdPerson style={{color: 'var(--institutional-gold)'}} />
-                          <p className="font-mono text-gray-700 bg-white/50 px-3 py-1 rounded-lg text-sm border border-institutional-gold-light">
+                            <p className="font-mono text-gray-700 bg-white/50 px-3 py-1 rounded-lg text-sm border border-institutional-gold-light">
                             {profesor.tarjeta_uid}
                           </p>
                         </div>
@@ -220,21 +258,19 @@ export default function Profesores() {
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Agregar Profesor">
         <form onSubmit={addProfesor} className="flex flex-col gap-4">
-          <input
-            placeholder="Nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl text-black placeholder-gray-500 focus:ring-2 focus:border-institutional-gold focus:bg-white outline-none transition-all duration-300 shadow-institutional"
-            style={{'--tw-ring-color': 'var(--institutional-gold)'}}
-            required
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input placeholder="Primer nombre" value={primerNombre} onChange={(e)=>setPrimerNombre(e.target.value)} className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl" required />
+            <input placeholder="Segundo nombre" value={segundoNombre} onChange={(e)=>setSegundoNombre(e.target.value)} className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl" />
+            <input placeholder="Primer apellido" value={primerApellido} onChange={(e)=>setPrimerApellido(e.target.value)} className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl" required />
+            <input placeholder="Segundo apellido" value={segundoApellido} onChange={(e)=>setSegundoApellido(e.target.value)} className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl" />
+          </div>
+          <input placeholder="RUT" value={rut} onChange={(e)=>setRut(e.target.value)} className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl" />
           <input
             placeholder="UID Tarjeta"
             value={tarjeta}
             onChange={(e) => setTarjeta(e.target.value)}
             className="w-full px-4 py-3 bg-white/80 border-2 border-institutional-gold-light rounded-xl text-black placeholder-gray-500 focus:ring-2 focus:border-institutional-gold focus:bg-white outline-none transition-all duration-300 shadow-institutional font-mono"
             style={{'--tw-ring-color': 'var(--institutional-gold)'}}
-            required
           />
           <button
             type="submit"
